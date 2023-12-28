@@ -1,13 +1,16 @@
 import mongoose from "mongoose";
 import bycrptjs from "bcryptjs";
 import crypto from "crypto";
+import { NextFunction } from "express";
 
 export interface IUser extends mongoose.Document {
+  name?: string;
   email: string;
   password: string;
   passwordChangedAt?: Date;
   passwordResetToken?: string;
   passwordResetExpires?: Date;
+  active: boolean;
 
   correctPassword: (
     candidatePassword: string,
@@ -20,12 +23,20 @@ export interface IUser extends mongoose.Document {
 }
 
 const userSchema = new mongoose.Schema({
+  name: { type: String, required: true },
   email: { type: String, required: true, unique: true },
+  active: { type: Boolean, default: true },
   password: { type: String, required: true },
   passwordChangedAt: { type: Date },
   passwordResetToken: { type: String },
   passwordResetExpires: { type: Date },
 });
+
+// This is giving an error
+// userSchema.pre(/^find/, function (next: NextFunction) {
+//   this.find({ active: { $ne: false } });
+//   next();
+// });
 
 userSchema.methods.correctPassword = async function (
   candidatePassword: string,

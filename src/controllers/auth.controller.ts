@@ -145,6 +145,7 @@ export const ForgotPassword = async (req: Request, res: Response) => {
       "host"
     )}/auth/reset-password/${resetToken}`;
 
+    // Sending the email here
     try {
       await sendEmail(email, resetURL);
       res.status(200).json({ message: "Reset token sent to email" });
@@ -193,9 +194,53 @@ export const updatePassword = async (req: Request, res: Response) => {
       token: newToken,
       message: "Password updated successfully",
       status: "success",
-      user,
+      data: user,
     });
   } catch (error) {}
+};
+
+export const updateMe = async (req: Request, res: Response) => {
+  try {
+    if (req.body.password || req.body.confirmPassword) {
+      return res.status(400).json({
+        message:
+          "This route is not for password updates. Please use /update-password",
+      });
+    }
+    const user = req.body.user;
+
+    const { name, email } = req.body;
+
+    const updatedUser = await User.findByIdAndUpdate(
+      user._id,
+      { name, email },
+      { new: true, runValidators: true }
+    );
+
+    res.status(200).json({
+      message: "Profile updated successfully",
+      status: "success",
+      data: updatedUser,
+    });
+  } catch (error) {
+    res.status(500).json({ message: "Something went wrong" });
+  }
+};
+
+export const DeleteAccount = async (req: Request, res: Response) => {
+  try {
+    const user = req.body.user;
+
+    await User.findByIdAndUpdate(user._id, { active: false });
+
+    res.status(204).json({
+      message: "User deleted successfully",
+      data: null,
+      status: "success",
+    });
+  } catch (error) {
+    res.status(500).json({ message: "Something went wrong" });
+  }
 };
 
 export const CurrentUser = async (req: Request, res: Response) => {

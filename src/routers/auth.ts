@@ -7,6 +7,7 @@ import {
   Signin,
   Signup,
   VerifyEmail,
+  DeleteAccount,
   protect,
 } from "../controllers/auth.controller";
 
@@ -22,5 +23,6 @@ authRouter.post("/reset-password", ResetPassword);
 authRouter.get("/current-user", protect, CurrentUser);
 
 authRouter.post("/verify-email", VerifyEmail);
+authRouter.delete("/delete-user", protect, DeleteAccount);
 
 export default authRouter;
