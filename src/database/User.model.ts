@@ -1,10 +1,13 @@
 import mongoose from "mongoose";
 import bycrptjs from "bcryptjs";
+import crypto from "crypto";
 
 export interface IUser extends mongoose.Document {
   email: string;
   password: string;
   passwordChangedAt?: Date;
+  passwordResetToken?: string;
+  passwordResetExpires?: Date;
 
   correctPassword: (
     candidatePassword: string,
@@ -12,12 +15,16 @@ export interface IUser extends mongoose.Document {
   ) => Promise<boolean>;
 
   changedPasswordAfter: (JWTTimestamp: number) => boolean;
+
+  createPasswordResetToken: () => string;
 }
 
 const userSchema = new mongoose.Schema({
   email: { type: String, required: true, unique: true },
   password: { type: String, required: true },
   passwordChangedAt: { type: Date },
+  passwordResetToken: { type: String },
+  passwordResetExpires: { type: Date },
 });
 
 userSchema.methods.correctPassword = async function (
@@ -39,6 +46,19 @@ userSchema.methods.changedPasswordAfter = function (JWTTimestamp: number) {
   }
 
   return false;
+};
+
+userSchema.methods.createPasswordResetToken = function () {
+  const resetToken = crypto.randomBytes(32).toString("hex");
+
+  this.passwordResetToken = crypto
+    .createHash("sha256")
+    .update(resetToken)
+    .digest("hex");
+
+  this.passwordResetExpires = Date.now() + 10 * 60 * 1000;
+
+  return resetToken;
 };
 
 export const User = mongoose.model<IUser>("User", userSchema);

@@ -3,6 +3,7 @@ import jwt from "jsonwebtoken";
 import bycrptjs from "bcryptjs";
 
 import { User } from "../database/User.model";
+import sendEmail from "../utils/emails";
 import { signinSchema, signupSchema } from "../validations/zod";
 
 export const Signup = async (req: Request, res: Response) => {
@@ -84,11 +85,50 @@ export const Signin = async (req: Request, res: Response) => {
 
 export const RefreshToken = async (req: Request, res: Response) => {};
 
-export const Logout = async (req: Request, res: Response) => {};
-
 export const ResetPassword = async (req: Request, res: Response) => {};
 
-export const CurrentUser = async (req: Request, res: Response) => {};
+export const ForgotPassword = async (req: Request, res: Response) => {
+  try {
+    const email = req.body.email;
+
+    const user = await User.findOne({ email });
+    if (!user) return res.status(404).json({ message: "User not found" });
+
+    const resetToken = user.createPasswordResetToken();
+
+    await user.save({
+      validateBeforeSave: false,
+    });
+
+    const resetURL = `${req.protocol}://${req.get(
+      "host"
+    )}/auth/reset-password/${resetToken}`;
+
+    try {
+      await sendEmail(email, resetURL);
+      res.status(200).json({ message: "Reset token sent to email" });
+    } catch (error) {
+      user.passwordResetToken = undefined;
+      user.passwordResetExpires = undefined;
+
+      await user.save({
+        validateBeforeSave: false,
+      });
+
+      res.status(500).json({ message: "Something went wrong" });
+    }
+  } catch (error) {}
+};
+
+export const CurrentUser = async (req: Request, res: Response) => {
+  try {
+    const user = req.body.user;
+
+    res.status(200).json({ message: "User found", user });
+  } catch (error) {
+    res.status(500).json({ message: "Something went wrong" });
+  }
+};
 
 export const VerifyEmail = async (req: Request, res: Response) => {};
 
