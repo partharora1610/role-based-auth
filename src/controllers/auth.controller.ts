@@ -1,6 +1,7 @@
 import { NextFunction, Request, Response } from "express";
 import jwt from "jsonwebtoken";
 import bycrptjs from "bcryptjs";
+import crypto from "crypto";
 
 import { User } from "../database/User.model";
 import sendEmail from "../utils/emails";
@@ -85,7 +86,47 @@ export const Signin = async (req: Request, res: Response) => {
 
 export const RefreshToken = async (req: Request, res: Response) => {};
 
-export const ResetPassword = async (req: Request, res: Response) => {};
+export const ResetPassword = async (req: Request, res: Response) => {
+  try {
+    const token = req.params.token;
+    const hashedToken = crypto.createHash("sha256").update(token).digest("hex");
+
+    const user = await User.findOne({
+      passwordResetToken: hashedToken,
+      passwordResetExpires: { $gt: Date.now() },
+    });
+
+    if (!user) return res.status(400).json({ message: "Invalid token" });
+
+    const password = req.body.password;
+    const confirmPassword = req.body.confirmPassword;
+
+    if (password !== confirmPassword)
+      return res.status(400).json({ message: "Passwords don't match" });
+
+    const hashedPassword = await bycrptjs.hash(password, 12);
+
+    user.password = hashedPassword;
+    user.passwordResetToken = undefined;
+    user.passwordResetExpires = undefined;
+    user.passwordChangedAt = new Date(Date.now() - 1000);
+
+    await user.save();
+
+    const newToken = jwt.sign({ email: user.email }, process.env.JWT_SECRET!, {
+      expiresIn: "1d",
+    });
+
+    res.status(200).json({
+      token: newToken,
+      message: "Password reset successfully",
+      status: "success",
+      user,
+    });
+  } catch (error) {
+    res.status(500).json({ message: "Something went wrong" });
+  }
+};
 
 export const ForgotPassword = async (req: Request, res: Response) => {
   try {
