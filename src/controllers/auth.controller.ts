@@ -161,6 +161,43 @@ export const ForgotPassword = async (req: Request, res: Response) => {
   } catch (error) {}
 };
 
+export const updatePassword = async (req: Request, res: Response) => {
+  try {
+    const user = req.body.user;
+
+    const { currentPassword, password, confirmPassword } = req.body;
+
+    const correct = await user.correctPassword(currentPassword, user.password);
+
+    if (!correct)
+      return res.status(400).json({
+        message:
+          "Incorrect credentials entered by the user!! Forgot password ?",
+      });
+
+    if (password !== confirmPassword)
+      return res.status(400).json({ message: "Passwords don't match" });
+
+    const hashedPassword = await bycrptjs.hash(password, 12);
+
+    user.password = hashedPassword;
+    user.passwordChangedAt = new Date(Date.now() - 1000);
+
+    await user.save();
+
+    const newToken = jwt.sign({ email: user.email }, process.env.JWT_SECRET!, {
+      expiresIn: "1d",
+    });
+
+    res.status(200).json({
+      token: newToken,
+      message: "Password updated successfully",
+      status: "success",
+      user,
+    });
+  } catch (error) {}
+};
+
 export const CurrentUser = async (req: Request, res: Response) => {
   try {
     const user = req.body.user;
